@@ -1,0 +1,224 @@
+<project name="Rwui" default="help" basedir=".">
+
+<!-- ===================== Property Definitions =========================== -->
+
+    <!-- 
+         All properties should be defined in this section.
+	 Any host-specific properties should be defined 
+	 in the build.properties file.
+
+	 In this app, the following properties are defined in build.properties:
+
+	 o  tomcat.home     - the home directory of your Tomcat installation
+	 o  webapps.home    - the place to copy the war file to deploy it
+    -->
+
+  <property file="build.properties" />
+  <property name="fs" value="${file.separator}" />
+  <property name="webapps.home"          value="${tomcat.home}${fs}webapps"/>
+
+  <property name="app.home"          value="." />
+  <property name="javadoc.pkg.top"   value="sreg" />
+  
+  <property name="src.home"          value="${app.home}${fs}src"/>
+  <property name="lib.home"          value="${app.home}${fs}lib"/>
+  <property name="object.home"       value="${app.home}${fs}object"/>
+  <property name="deploy.home"       value="${app.home}${fs}deploy"/>
+  <property name="doc.home"          value="${app.home}${fs}doc"/>
+  <property name="web.home"          value="${app.home}${fs}web"/>
+
+  <property name="build.home"        value="${app.home}${fs}build"/>
+  <property name="build.classes"     value="${build.home}${fs}WEB-INF${fs}classes"/>
+  <property name="build.lib"         value="${build.home}${fs}WEB-INF${fs}lib"/>
+
+
+<!-- ==================== Compilation Classpath =========================== -->
+
+    <!-- 
+         This section creates the classpath for compilation.
+    -->
+
+  <path id="compile.classpath">
+
+    <!-- The object files for this application -->
+    <pathelement location="${object.home}"/>
+
+    <!-- The lib files for this application -->
+    <fileset dir="${lib.home}">
+      <include name="*.jar"/>
+      <include name="*.zip"/>
+    </fileset>
+
+    <!-- All files/jars that Tomcat makes available -->
+    <fileset dir="${tomcat.home}${fs}lib">
+      <include name="*.jar"/>
+    </fileset>
+    <fileset dir="${tomcat.home}${fs}lib">
+      <include name="*.jar"/>
+    </fileset>
+    <pathelement location="${tomcat.home}${fs}classes"/>
+    <pathelement location="${tomcat.home}${fs}classes"/>
+
+  </path>
+
+
+<!-- ==================== Build Targets below here========================= -->
+
+
+<!-- ==================== "help" Target =================================== -->
+
+    <!--
+         This is the default ant target executed if no target is specified.
+	 This helps avoid users just typeing 'ant' and running a 
+	 default target that may not do what they are anticipating...
+    -->
+
+ <target name="help" >
+   <echo message="Please specify a target! [usage: ant &lt;targetname&gt;]" />
+   <echo message="Here is a list of possible targets: "/>
+   <echo message="  clean-all.....Delete build dir, all .class and war files"/>
+   <echo message="  prepare.......Creates directories if required" />
+   <echo message="  compile.......Compiles source files" />
+   <echo message="  build.........Build war file from .class and other files"/>
+   <echo message="  deploy........Copy war file to the webapps directory" />
+   <echo message="  javadoc.......Generates javadoc for this application" />
+ </target>
+
+<!-- ==================== "clean-all" Target ============================== -->
+    
+    <!--
+          This target should clean up any traces of the application
+	  so that if you run a new build directly after cleaning, all
+	  files will be replaced with what's current in source control
+    -->
+
+ <target name="clean-all" >
+    <delete dir="${build.home}"/>
+    <delete dir="${object.home}"/>
+    <delete dir="${deploy.home}"/>
+
+    <!-- can't delete directory if Tomcat is running -->
+    <delete dir="${webapps.home}${fs}${app.name}" failonerror="false"/>  
+
+    <!-- deleting the deployed .war file is fine even if Tomcat is running -->
+    <delete dir="${webapps.home}${fs}${app.name}.war" />                
+
+    <!-- delete the javadoc -->
+    <delete dir="${doc.home}"/>
+
+ </target>
+
+<!-- ==================== "prepare" Target ================================ -->
+ 
+    <!--
+          This target is executed prior to any of the later targets
+	  to make sure the directories exist. It only creates them 
+	  if they need to be created....
+	  
+	  Other, similar, preparation steps can be placed here.
+    -->
+
+  <target name="prepare">
+
+    <echo message="Tomcat Home  = ${tomcat.home}" />
+    <echo message="webapps Home = ${webapps.home}" />
+
+    <mkdir  dir="${object.home}"/>
+    <mkdir  dir="${deploy.home}"/>
+
+    <mkdir  dir="${doc.home}"/>
+    <mkdir  dir="${doc.home}${fs}api"/>
+
+    <mkdir dir="${build.home}"/>
+    <mkdir dir="${build.home}${fs}WEB-INF" />
+    <mkdir dir="${build.home}${fs}WEB-INF${fs}classes" />
+    <mkdir dir="${build.home}${fs}WEB-INF${fs}lib" />
+
+  </target>
+
+<!-- ==================== "compile" Target ================================ -->
+
+    <!-- 
+          This only compiles java files that are newer
+	  than their corresponding .class files. 
+     -->
+
+  <target name="compile" depends="prepare"  >
+    <javac srcdir="${src.home}" destdir="${object.home}"  deprecation="yes" debug="yes" >
+        <classpath refid="compile.classpath"/>
+    	<compilerarg value ="-Xlint:unchecked"/>
+    </javac>
+  </target>
+
+<!-- ==================== "build" Target ================================== -->
+
+    <!-- 
+          This target builds the war file for the application
+	  by first building the directory structure of the 
+          application in ${build.home} and then creating the
+	  war file using the ant <war> task
+    -->
+
+  <target name="build" depends="compile" >
+
+    <!-- Copy all the webapp content (jsp's, html, tld's, xml, etc. -->
+    <!-- Note that this also copies the META-INF directory -->
+    <copy    todir="${build.home}">
+      <fileset dir="${web.home}"/>
+    </copy>
+    
+    <!-- Now, copy all the Java class files -->
+    <copy    todir="${build.home}${fs}WEB-INF${fs}classes">
+      <fileset dir="${object.home}"/>
+    </copy>
+
+    <!-- Now, copy all the properties files, etc that go on the classpath -->
+    <copy    todir="${build.home}${fs}WEB-INF${fs}classes">
+      <fileset dir="${src.home}">
+         <include name="**${fs}*.properties" />
+         <include name="**${fs}*.prop" />
+      </fileset>
+    </copy>
+
+    <!-- Now, copy all the jar files we need -->
+    <copy    todir="${build.home}${fs}WEB-INF${fs}lib">
+      <fileset dir="${lib.home}" />
+    </copy>
+
+    <!-- Create the <war> file -->
+    <jar jarfile="${deploy.home}${fs}${app.name}.war" 
+        basedir="${build.home}"/>                     
+    
+  </target>
+
+
+
+<!-- ==================== "deploy" Target ================================= -->
+
+    <!-- 
+         This target simply copies the war file from the deploy
+	 directory into the Tomcat webapp directory.
+    -->
+
+  <target name="deploy" depends="build" >
+
+    <!-- Copy the contents of the build directory -->
+    <copy todir="${webapps.home}"  file="${deploy.home}${fs}${app.name}.war" />
+
+  </target>
+
+<!-- ==================== "doc" Target ==================================== -->
+
+    <!-- 
+         This task creates javadoc. It is dependent upon only the
+	 'compile' target so it is not executed in a normal build.
+         As a result, the target needs to be run on its own.
+    -->
+
+  <target name="javadoc" depends="compile">
+      <javadoc sourcepath = "${src.home}"
+                  destdir = "${doc.home}${fs}api"
+             packagenames = "${javadoc.pkg.top}"/>
+  </target>
+
+</project>
